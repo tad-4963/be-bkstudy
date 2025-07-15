@@ -1,0 +1,32 @@
+name: Backup MongoDB Atlas Daily
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Run at 00:00 UTC every day
+  workflow_dispatch:      # Allow manual execution
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        
+      - name: Install MongoDB Database Tools
+        run: |
+          curl -LO https://fastdl.mongodb.org/tools/db/mongodb-database-tools-ubuntu2004-x86_64-100.7.0.deb
+          sudo dpkg -i mongodb-database-tools-ubuntu2004-x86_64-100.7.0.deb
+          
+      - name: Run mongodump
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+        run: |
+          mongodump --uri="$MONGODB_URI" --archive=backup.archive --gzip
+          
+      - name: Get current date
+        id: date
+        run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+          
+      - name: Upload backup artifact
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: mongodb-backup-${{ steps.date.outputs.date }}
+          path: backup.archive
